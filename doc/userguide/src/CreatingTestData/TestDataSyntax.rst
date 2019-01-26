@@ -1,9 +1,10 @@
 Test data syntax
 ================
 
-This section covers Robot Framework's overall test data
-syntax. The following sections will explain how to actually create test
-cases, test suites and so on.
+This section covers Robot Framework's overall test data syntax. The following
+sections will explain how to actually create test cases, test suites and so on.
+Although this section mostly uses term *test*, the same rules apply also
+when `creating tasks`_.
 
 .. contents::
    :depth: 2
@@ -42,10 +43,10 @@ often Python.
 Test data sections
 ------------------
 
-Robot Framework test data is defined in different sections, often also
+Robot Framework data is defined in different sections, often also
 called tables, listed below:
 
-.. table:: Different test data sections
+.. table:: Different sections in data
    :class: tabular
 
    +------------+--------------------------------------------+
@@ -61,6 +62,10 @@ called tables, listed below:
    +------------+--------------------------------------------+
    | Test Cases | `Creating test cases`_ from available      |
    |            | keywords.                                  |
+   +------------+--------------------------------------------+
+   | Tasks      | `Creating tasks`_ using available          |
+   |            | keywords. Single file can only contain     |
+   |            | either test cases or tasks.                |
    +------------+--------------------------------------------+
    | Keywords   | `Creating user keywords`_ from existing    |
    |            | lower-level keywords                       |
@@ -85,6 +90,11 @@ purposes. This is especially useful when creating test cases using the
 `data-driven style`_.
 
 Possible data before the first section is ignored.
+
+.. note:: Prior to Robot Framework 3.1, section names were space-insensitive,
+          meaning that spaces could be removed (e.g. `TestCases`) or extra
+          spaces added (e.g. `S e t t i n g s`). This is now deprecated and
+          only the format in the table above, case-insensitively, is supported.
 
 .. note:: Prior to Robot Framework 3.1, all unrecognized sections were silently
           ignored but nowadays they cause an error. `Comments` sections can
@@ -142,6 +152,8 @@ UTF-8 encoding.
 
 __ `Dividing test data to several rows`_
 __ Escaping_
+
+.. _space separated plain text format:
 
 Space separated format
 ''''''''''''''''''''''
@@ -593,9 +605,7 @@ must be escaped regardless of the test data format, and when using the
 
 Empty cells can be escaped either with the backslash character or with
 `built-in variable`_ `${EMPTY}`. The latter is typically recommended
-as it is easier to understand. An exception to this recommendation is escaping
-the indented cells in `for loops`_ with a backslash when using the
-`space separated format`_. All these cases are illustrated by the following
+as it is easier to understand. All these cases are illustrated by the following
 examples:
 
 .. sourcecode:: robotframework
@@ -607,9 +617,6 @@ examples:
        Do Something    first arg    ${EMPTY}
    Non-trailing empty
        Do Something    ${EMPTY}     second arg    # Escaping needed in space separated format
-   For loop
-       :FOR    ${var}    IN    @{VALUES}
-       \    Log    ${var}                         # Escaping needed here too
 
 __ `Ignored data`_
 

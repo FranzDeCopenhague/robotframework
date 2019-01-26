@@ -175,9 +175,15 @@ String None is converted to None object
 Return value annotation causes no error
     Check Test Case    ${TESTNAME}
 
+None as default
+    Check Test Case    ${TESTNAME}
+
 Forward references
     [Tags]    require-py3.5
     Check Test Case    ${TESTNAME}
 
 @keyword decorator overrides annotations
+    Check Test Case    ${TESTNAME}
+
+Type information mismatch caused by decorator
     Check Test Case    ${TESTNAME}

@@ -116,8 +116,8 @@ class FromDirectoryPopulator(object):
 
     def populate(self, path, datadir, include_suites=None,
                  include_extensions=None, recurse=True):
-        LOGGER.info("Parsing test data directory '%s'" % path)
-        include_suites = self._get_include_suites(path, include_suites or [])
+        LOGGER.info("Parsing directory '%s'." % path)
+        include_suites = self._get_include_suites(path, include_suites)
         init_file, children = self._get_children(path, include_extensions,
                                                  include_suites)
         if init_file:
@@ -144,13 +144,14 @@ class FromDirectoryPopulator(object):
                 LOGGER.error("Parsing '%s' failed: %s" % (child, err.message))
 
     def _get_include_suites(self, path, incl_suites):
-        if not isinstance(incl_suites, SuiteNamePatterns):
-            incl_suites = SuiteNamePatterns(self._create_included_suites(incl_suites))
         if not incl_suites:
-            return incl_suites
+            return None
+        if not isinstance(incl_suites, SuiteNamePatterns):
+            incl_suites = SuiteNamePatterns(
+                    self._create_included_suites(incl_suites))
         # If a directory is included, also all its children should be included.
-        if self._directory_is_included(path, incl_suites):
-            return SuiteNamePatterns()
+        if self._is_in_included_suites(os.path.basename(path), incl_suites):
+            return None
         return incl_suites
 
     def _create_included_suites(self, incl_suites):
@@ -159,10 +160,6 @@ class FromDirectoryPopulator(object):
             while '.' in suite:
                 suite = suite.split('.', 1)[1]
                 yield suite
-
-    def _directory_is_included(self, path, incl_suites):
-        name = os.path.basename(os.path.normpath(path))
-        return self._is_in_included_suites(name, incl_suites)
 
     def _get_children(self, dirpath, incl_extensions, incl_suites):
         init_file = None
@@ -180,7 +177,8 @@ class FromDirectoryPopulator(object):
 
     def _list_dir(self, dir_path, incl_extensions, incl_suites):
         # os.listdir returns Unicode entries when path is Unicode
-        names = os.listdir(unic(dir_path))
+        dir_path = unic(dir_path)
+        names = os.listdir(dir_path)
         for name in sorted(names, key=lambda item: item.lower()):
             name = unic(name)  # needed to handle nfc/nfd normalization on OSX
             path = os.path.join(dir_path, name)
@@ -191,7 +189,7 @@ class FromDirectoryPopulator(object):
             elif self._is_included(path, base, ext, incl_extensions, incl_suites):
                 yield path, False
             else:
-                LOGGER.info("Ignoring file or directory '%s'." % name)
+                LOGGER.info("Ignoring file or directory '%s'." % path)
 
     def _is_init_file(self, path, base, ext, incl_extensions):
         return (base.lower() == '__init__' and
@@ -213,7 +211,9 @@ class FromDirectoryPopulator(object):
         return self._is_in_included_suites(base, incl_suites)
 
     def _is_in_included_suites(self, name, incl_suites):
-        return not incl_suites or incl_suites.match(self._split_prefix(name))
+        if not incl_suites:
+            return True
+        return incl_suites.match(self._split_prefix(name))
 
     def _split_prefix(self, name):
         return name.split('__', 1)[-1]

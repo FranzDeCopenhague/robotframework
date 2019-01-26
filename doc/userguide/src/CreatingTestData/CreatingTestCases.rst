@@ -1,9 +1,16 @@
+.. _Creating tests:
+
 Creating test cases
 ===================
 
 This section describes the overall test case syntax. Organizing test
 cases into `test suites`_ using `test case files`_ and `test suite
 directories`_ is discussed in the next section.
+
+When using Robot Framework for other automation purposes than test
+automation, it is recommended to create *tasks* instead of tests.
+The task syntax is for most parts identical to the test syntax,
+and the differences are explained in the `Creating tasks`_ section.
 
 .. contents::
    :depth: 2
@@ -84,6 +91,13 @@ below and explained later in this section.
 `[Timeout]`:setting:
    Used for setting a `test case timeout`_. Timeouts_ are discussed in
    their own section.
+
+.. note:: Setting names are case-insensitive, but the format used above is
+      recommended. Prior to Robot Framework 3.1, settings were also
+      space-insensitive meaning that extra spaces could be added (e.g.
+      `[T a g s]`). This is now deprecated and only the format above,
+      case-insensitively, is supported. Possible space between brackets
+      and the name (e.g. `[ Tags ]`) is still allowed.
 
 Example test case with settings:
 
@@ -466,6 +480,8 @@ execution of that test case is stopped, possible `test teardown`_ is executed,
 and then execution continues from the next test case. It is also possible to
 use special `continuable failures`__ if stopping test execution is not desired.
 
+__ `Continue on failure`_
+
 Error messages
 ~~~~~~~~~~~~~~
 
@@ -476,9 +492,9 @@ some keywords allow configuring them.
 In some circumstances, for example when continuable failures are used,
 a test case can fail multiple times. In that case the final error message
 is got by combining the individual errors. Very long error messages are
-automatically cut from the middle to keep reports_ easier to read. Full
-error messages are always visible in log_ file as a message of the failed
-keyword.
+`automatically cut from the middle`__ to keep reports_ easier to read, but
+full error messages are always visible in `log files`_ as messages of
+the failed keywords.
 
 By default error messages are normal text, but
 they can `contain HTML formatting`__. This
@@ -496,7 +512,7 @@ and logs. Using HTML in a custom message is shown in the second example below.
        ${number} =    Get Number
        Should Be Equal    ${number}    42    *HTML* Number is not my <b>MAGIC</b> number.
 
-__ `Continue on failure`_
+__ `Limiting error message length in reports`_
 __ `HTML in error messages`_
 
 Test case name and documentation
@@ -869,10 +885,12 @@ all the looped elements even if there are failures.
    *** Test Cases ***
    Template and for
        [Template]    Example keyword
-       :FOR    ${item}    IN    @{ITEMS}
-       \    ${item}    2nd arg
-       :FOR    ${index}    IN RANGE    42
-       \    1st arg    ${index}
+       FOR    ${item}    IN    @{ITEMS}
+           ${item}    2nd arg
+       END
+       FOR    ${index}    IN RANGE    42
+           1st arg    ${index}
+       END
 
 Different test case styles
 --------------------------

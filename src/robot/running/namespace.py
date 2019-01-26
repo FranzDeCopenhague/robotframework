@@ -188,10 +188,12 @@ class Namespace(object):
     def start_suite(self):
         self.variables.start_suite()
 
-    def end_suite(self):
-        self.variables.end_suite()
+    def end_suite(self, suite):
         for lib in self.libraries:
             lib.end_suite()
+        if not suite.parent:
+            IMPORTER.close_global_library_listeners()
+        self.variables.end_suite()
 
     def start_user_keyword(self):
         self.variables.start_keyword()
@@ -283,8 +285,9 @@ class KeywordStore(object):
         return runner
 
     def _get_bdd_style_runner(self, name):
+        lower = name.lower()
         for prefix in ['given ', 'when ', 'then ', 'and ', 'but ']:
-            if name.lower().startswith(prefix):
+            if lower.startswith(prefix):
                 runner = self._get_runner(name[len(prefix):])
                 if runner:
                     runner = copy.copy(runner)

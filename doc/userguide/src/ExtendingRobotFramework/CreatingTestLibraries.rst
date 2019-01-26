@@ -1049,9 +1049,10 @@ below implementing the same keyword as in earlier examples:
 
 Regardless of the approach that is used, it is not necessarily to specify
 types for all arguments. When specifying types as a list, it is possible
-to use `None` to mark that an argument does not have a type, and arguments
-at the end can be omitted altogether. For example, both of these keywords
-specify the type only for the second argument:
+to use `None` or any other non-true value to mark that a certain argument
+does not have a type, and arguments at the end can be omitted altogether.
+For example, both of these keywords specify the type only for the second
+argument:
 
 .. sourcecode:: python
 
@@ -1063,10 +1064,13 @@ specify the type only for the second argument:
   def example2(first, second, third):
       # ...
 
-If type information is specified using both function annotations and the
-`@keyword` decorator, types given using the latter have a precedence. Using
-an empty list or dictionary like `@keyword(types={})` means that none of
-the arguments has explicit type information.
+If any types are specified using the `@keyword` decorator, type information
+got from annotations__ is ignored with that keyword. Setting `types` to `None`
+like `@keyword(types=None)` disables type conversion altogether so that also
+type information got from `default values`__ is ignored.
+
+__ `Specifying argument types using function annotations`_
+__ `Implicit argument types based on default values`_
 
 Implicit argument types based on default values
 '''''''''''''''''''''''''''''''''''''''''''''''
@@ -1091,6 +1095,13 @@ got explicitly:
 
 - Conversion failures are not errors, keywords get the original value in
   these cases instead.
+
+If argument conversion based on default values is not desired with a certain
+argument, it can be disabled by specifying a type for that argument explicitly.
+Alternatively argument conversion can be disabled altogether with the
+`@keyword decorator`__ like `@keyword(types=None)`.
+
+__ `Specifying argument types using @keyword decorator`_
 
 Supported conversions
 '''''''''''''''''''''
@@ -1121,80 +1132,86 @@ argument is converted to the concrete type.
 
 Also types in in the typing_ module that map to the supported concrete
 types or ABCs (e.g. `List`) are supported. With generics also the subscription
-syntax `List[int]` works, but no validation is done for container contents.
+syntax (e.g. `List[int]`) works, but no validation is done for container
+contents.
+
+In addition to using the actual types (e.g. `int`), it is possible to specify
+the type using type names as a string (e.g. `'int'`) and some types also have
+aliases (e.g. `'integer'`). Matching types to names and aliases is
+case-insensitive.
 
 .. table:: Supported argument conversions
    :class: tabular
 
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   |    Type     |      ABC      |                       Explanation                              |             Examples                 |
-   +=============+===============+================================================================+======================================+
-   | bool_       |               | Strings `TRUE`, `YES`, `ON` and `1` are converted to `True`,   | | `TRUE` (converted to `True`)       |
-   |             |               | the empty string as well as `FALSE`, `NO`, `OFF` and `0`       | | `off` (converted to `False`)       |
-   |             |               | are converted to `False`, and the string `NONE` is converted   | | `foobar` (returned as-is)          |
-   |             |               | to `None`. Other strings are passed as-is, allowing keywords   |                                      |
-   |             |               | to handle them specially if needed. All comparisons are        |                                      |
-   |             |               | case-insensitive.                                              |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | int_        | Integral_     | Conversion is done using the int_ built-in function.           | | `42`                               |
-   |             |               | If that fails and type is got implicitly from default values,  | | `3.14` (only with implicit type)   |
-   |             |               | also float_ conversion is attempted.                           |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | float_      | Real_         | Conversion is done using the float_ built-in.                  | | `3.14`                             |
-   |             |               |                                                                | | `2.9979e8`                         |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | Decimal_    |               | Conversion is done using the Decimal_ class.                   | | `3.14`                             |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | bytes_      | ByteString_   | Argument is converted to bytes so that each Unicode code point | | `foobar`                           |
-   |             |               | below 256 is directly mapped to a matching byte. Higher code   | | `hyvä` (converted to `hyv\xe4`)    |
-   |             |               | points are not allowed. String `NONE` (case-insensitively) is  | | `\x00` (the null byte)             |
-   |             |               | converted to matching bytes, not to Python `None`. When using  |                                      |
-   |             |               | Python 2, byte conversion is only done if type is specified    |                                      |
-   |             |               | explicitly.                                                    |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | bytearray_  |               | Same conversion as with bytes_ but the result is a bytearray_. |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | `datetime   |               | Argument is expected to be a timestamp in `ISO 8601`_ like     | | `2018-09-12T15:47:05.123456`       |
-   | <dt-mod_>`_ |               | format `YYYY-MM-DD hh:mm:ss.mmmmmm`, where any non-digit       | | `2018-09-12 15:47`                 |
-   |             |               | character can be used as a separator or separators can be      | | `2018-09-12`                       |
-   |             |               | omitted altogether. Additionally, only the date part is        |                                      |
-   |             |               | mandatory, all possibly missing time components are considered |                                      |
-   |             |               | to be zeros.                                                   |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | date_       |               | Same conversion as with `datetime <dt-mod_>`_ but all time     | | `2018-09-12`                       |
-   |             |               | components are expected to be omitted or to be zeros.          |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | timedelta_  |               | String is expected to represent a time interval in one of the  | | `42` (42 seconds)                  |
-   |             |               | time formats Robot Framework supports: `time as number`_,      | | `1 minute 2 seconds`               |
-   |             |               | `time as time string`_ or `time as "timer" string`_.           | | `01:02` (same as above)            |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | Enum_       |               | The specified type must be an enumeration (a subclass of       | .. sourcecode:: python               |
-   |             |               | Enum_) and arguments themselves must match its members.        |                                      |
-   |             |               |                                                                |    class Color(Enum):                |
-   |             |               |                                                                |        RED = 1                       |
-   |             |               |                                                                |        GREEN = 2                     |
-   |             |               |                                                                |                                      |
-   |             |               |                                                                | | `GREEN`                            |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | NoneType_   |               | String `NONE` (case-insensitively) is converted to `None`      | | `None`                             |
-   |             |               | object, other values are passed as-is. Mainly relevant when    |                                      |
-   |             |               | type is got implicitly from `None` being a default value.      |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | list_       | Sequence_     | Argument must be be a Python list literal. It is converted     | | `['foo', 'bar']`                   |
-   |             |               | to an actual list using the `ast.literal_eval`_ function.      | | `[('one', 1), ('two', 2)]`         |
-   |             |               | The list can contain any values `ast.literal_eval`_ supports   |                                      |
-   |             |               | inside it, including other lists or other containers.          |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | tuple_      |               | Same as list_ but the argument must be a tuple literal.        | | `('foo', 'bar')`                   |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | dict_       | Mapping_      | Same as list_ but the argument must be a dictionary literal.   | | `{'a': 1, 'b': 2}`                 |
-   |             |               |                                                                | | `{'key': 1, 'nested': {'key': 2}}` |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | set_        | `Set          | Same as list_ but the argument must be a set literal or        | | `{1, 2, 3, 42}`                    |
-   |             | <abc.Set_>`__ | `set()` to create an empty set. Not supported on Python 2.     | | `set()`                            |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
-   | frozenset_  |               | Same conversion as with set_ but the result is a frozenset_.   |                                      |
-   +-------------+---------------+----------------------------------------------------------------+--------------------------------------+
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   |    Type     |      ABC      |  Aliases   |                       Explanation                              |             Examples                 |
+   +=============+===============+============+================================================================+======================================+
+   | bool_       |               | boolean    | Strings `TRUE`, `YES`, `ON` and `1` are converted to `True`,   | | `TRUE` (converted to `True`)       |
+   |             |               |            | the empty string as well as `FALSE`, `NO`, `OFF` and `0`       | | `off` (converted to `False`)       |
+   |             |               |            | are converted to `False`, and the string `NONE` is converted   | | `foobar` (returned as-is)          |
+   |             |               |            | to `None`. Other strings are passed as-is, allowing keywords   |                                      |
+   |             |               |            | to handle them specially if needed. All comparisons are        |                                      |
+   |             |               |            | case-insensitive.                                              |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | int_        | Integral_     | integer,   | Conversion is done using the int_ built-in function.           | | `42`                               |
+   |             |               | long       | If that fails and type is got implicitly from default values,  | | `3.14` (only with implicit type)   |
+   |             |               |            | also float_ conversion is attempted.                           |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | float_      | Real_         | double     | Conversion is done using the float_ built-in.                  | | `3.14`                             |
+   |             |               |            |                                                                | | `2.9979e8`                         |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | Decimal_    |               |            | Conversion is done using the Decimal_ class.                   | | `3.14`                             |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | bytes_      | ByteString_   |            | Argument is converted to bytes so that each Unicode code point | | `foobar`                           |
+   |             |               |            | below 256 is directly mapped to a matching byte. Higher code   | | `hyvä` (converted to `hyv\xe4`)    |
+   |             |               |            | points are not allowed. String `NONE` (case-insensitively) is  | | `\x00` (the null byte)             |
+   |             |               |            | converted to matching bytes, not to Python `None`. When using  |                                      |
+   |             |               |            | Python 2, byte conversion is only done if type is specified    |                                      |
+   |             |               |            | explicitly.                                                    |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | bytearray_  |               |            | Same conversion as with bytes_ but the result is a bytearray_. |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | `datetime   |               |            | Argument is expected to be a timestamp in `ISO 8601`_ like     | | `2018-09-12T15:47:05.123456`       |
+   | <dt-mod_>`__|               |            | format `YYYY-MM-DD hh:mm:ss.mmmmmm`, where any non-digit       | | `2018-09-12 15:47`                 |
+   |             |               |            | character can be used as a separator or separators can be      | | `2018-09-12`                       |
+   |             |               |            | omitted altogether. Additionally, only the date part is        |                                      |
+   |             |               |            | mandatory, all possibly missing time components are considered |                                      |
+   |             |               |            | to be zeros.                                                   |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | date_       |               |            | Same conversion as with `datetime <dt-mod_>`__ but all time    | | `2018-09-12`                       |
+   |             |               |            | components are expected to be omitted or to be zeros.          |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | timedelta_  |               |            | String is expected to represent a time interval in one of the  | | `42` (42 seconds)                  |
+   |             |               |            | time formats Robot Framework supports: `time as number`_,      | | `1 minute 2 seconds`               |
+   |             |               |            | `time as time string`_ or `time as "timer" string`_.           | | `01:02` (same as above)            |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | Enum_       |               |            | The specified type must be an enumeration (a subclass of       | .. sourcecode:: python               |
+   |             |               |            | Enum_) and arguments themselves must match its members.        |                                      |
+   |             |               |            |                                                                |    class Color(Enum):                |
+   |             |               |            |                                                                |        RED = 1                       |
+   |             |               |            |                                                                |        GREEN = 2                     |
+   |             |               |            |                                                                |                                      |
+   |             |               |            |                                                                | | `GREEN`                            |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | NoneType_   |               |            | String `NONE` (case-insensitively) is converted to `None`      | | `None`                             |
+   |             |               |            | object, other values are passed as-is. Mainly relevant when    |                                      |
+   |             |               |            | type is got implicitly from `None` being a default value.      |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | list_       | Sequence_     |            | Argument must be be a Python list literal. It is converted     | | `['foo', 'bar']`                   |
+   |             |               |            | to an actual list using the `ast.literal_eval`_ function.      | | `[('one', 1), ('two', 2)]`         |
+   |             |               |            | The list can contain any values `ast.literal_eval`_ supports   |                                      |
+   |             |               |            | inside it, including other lists or other containers.          |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | tuple_      |               |            | Same as list_ but the argument must be a tuple literal.        | | `('foo', 'bar')`                   |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | dict_       | Mapping_      | dictionary,| Same as list_ but the argument must be a dictionary literal.   | | `{'a': 1, 'b': 2}`                 |
+   |             |               | map        |                                                                | | `{'key': 1, 'nested': {'key': 2}}` |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | set_        | `Set          |            | Same as list_ but the argument must be a set literal or        | | `{1, 2, 3, 42}`                    |
+   |             | <abc.Set_>`__ |            | `set()` to create an empty set. Not supported on Python 2.     | | `set()`                            |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
+   | frozenset_  |               |            | Same conversion as with set_ but the result is a frozenset_.   |                                      |
+   +-------------+---------------+------------+----------------------------------------------------------------+--------------------------------------+
 
 .. _bool: https://docs.python.org/library/functions.html#bool
 .. _int: https://docs.python.org/library/functions.html#int
@@ -1310,7 +1327,7 @@ __ `Using a custom keyword name`_
 
     from robot.api.deco import keyword
 
-    @keyword('Add ${quantity:\d+} Copies Of ${item} To Cart')
+    @keyword('Add ${quantity:\d+} copies of ${item} to cart')
     def add_copies_to_cart(quantity, item):
         # ...
 
@@ -1318,7 +1335,25 @@ __ `Using a custom keyword name`_
 
    *** Test Cases ***
    My Test
-       Add 7 Copies Of Coffee To Cart
+       Add 7 copies of coffee to cart
+
+By default arguments are passed to implementing keywords as strings, but
+automatic `argument type conversion`__ works if type information is specified
+somehow. With Python 3 it is convenient to use `function annotations`__,
+and alternatively it is possible to pass types to the `@keyword decorator`__:
+
+.. sourcecode:: python
+
+    @keyword('Add ${quantity:\d+} copies of ${item} to cart',
+             types={'quantity': int})
+    def add_copies_to_cart(quantity: int, item):
+        # ...
+
+__ `Argument types`_
+__ `Specifying argument types using function annotations`_
+__ `Specifying argument types using @keyword decorator`_
+
+.. note:: Automatic type conversion is new in Robot Framework 3.1.
 
 Communicating with Robot Framework
 ----------------------------------
@@ -2170,10 +2205,16 @@ library is used in the test data, Robot Framework uses the `run_keyword`
 method to get it executed. This method takes two or three arguments.
 The first argument is a string containing the name of the keyword to be
 executed in the same format as returned by `get_keyword_names`. The second
-argument is a list of arguments given to the keyword in the test data.
-The optional third argument is a dictionary (map in Java) that gets
-possible `free named arguments`__ and `named-only arguments`__ passed to
-the keyword.
+argument is a list of `positional arguments`_ given to the keyword in
+the test data, and the optional third argument is a dictionary (map in Java)
+containing `named arguments`_. If the third argument is missing, `free named
+arguments`__ and `named-only arguments`__ are not supported, and other
+named arguments are mapped to positional arguments.
+
+.. note:: Prior to Robot Framework 3.1, normal named arguments were
+          mapped to positional arguments regardless did `run_keyword`
+          accept two or three arguments. The third argument only got
+          possible free named arguments.
 
 After getting keyword name and arguments, the library can execute
 the keyword freely, but it must use the same mechanism to
@@ -2195,7 +2236,8 @@ trivial, dynamic library implemented in Python.
            return ['first keyword', 'second keyword']
 
        def run_keyword(self, name, args, kwargs):
-           print("Running keyword '%s' with arguments %s and %s." % (name, args, kwargs))
+           print("Running keyword '%s' with positional arguments %s and named arguments %s."
+                 % (name, args, kwargs))
 
 __ `Free named arguments with dynamic libraries`_
 __ `Named-only arguments with dynamic libraries`_
@@ -2283,6 +2325,26 @@ __ `Named-only arguments with dynamic libraries`_
 __ `Named argument syntax with dynamic libraries`_
 __ `Free named arguments with dynamic libraries`_
 
+Getting keyword argument types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Robot Framework 3.1 introduced support for automatic argument conversion
+and the dynamic library API supports that as well. The conversion logic
+works exactly like with `static libraries`__, but how the type information
+is specified is naturally different.
+
+With dynamic libraries types can be returned using the optional
+`get_keyword_types` method (alias `getKeywordTypes`). It can return types
+using a list or a dictionary exactly like types can be specified when using
+the `@keyword decorator`__. Type information can be specified using actual
+types like `int`, but especially if a dynamic library gets this information
+from external systems, using strings like `'int'` or `'integer'` may be
+easier. See the `Supported conversions`_ section for more information about
+supported types and how to specify them.
+
+__ `Argument types`_
+__ `Specifying argument types using @keyword decorator`_
+
 Getting keyword tags
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -2346,35 +2408,48 @@ the `named argument syntax`_. Using the syntax works based on the
 argument names and default values `got from the library`__ using the
 `get_keyword_arguments` method.
 
-For the most parts, the named arguments syntax works with dynamic keywords
-exactly like it works with any other keyword supporting it. The only special
-case is the situation where a keyword has multiple arguments with default
-values, and only some of the latter ones are given. In that case the framework
-fills the skipped optional arguments based on the default values returned
-by the `get_keyword_arguments` method.
+
+If the `run_keyword` method accepts three arguments, the second argument
+gets all positional arguments as a list and the last arguments gets all
+named arguments as a mapping. If it accepts only two arguments, named
+arguments are mapped to positional arguments. In the latter case, if
+a keyword has multiple arguments with default values and only some of
+the latter ones are given, the framework fills the skipped optional
+arguments based on the default values returned by the `get_keyword_arguments`
+method.
 
 Using the named argument syntax with dynamic libraries is illustrated
 by the following examples. All the examples use a keyword :name:`Dynamic`
-that has been specified to have argument specification
-`[arg1, arg2=xxx, arg3=yyy]`. The comment shows the arguments that
-the `run_keyword` method is actually called with.
+that has an argument specification `[a, b=d1, c=d2]`. The comment on each row
+shows how `run_keyword` would be called in these cases if it has two arguments
+(i.e. signature is `name, args`) and if it has three arguments (i.e.
+`name, args, kwargs`).
 
 .. sourcecode:: robotframework
 
-   *** Test Cases ***
+   *** Test Cases ***                  # args          # args, kwargs
    Positional only
-       Dynamic    a                             # [a]
-       Dynamic    a         b                   # [a, b]
-       Dynamic    a         b         c         # [a, b, c]
+       Dynamic    x                    # [x]           # [x], {}
+       Dynamic    x      y             # [x, y]        # [x, y], {}
+       Dynamic    x      y      z      # [x, y, z]     # [x, y, z], {}
 
-   Named
-       Dynamic    a         arg2=b              # [a, b]
-       Dynamic    a         b         arg3=c    # [a, b, c]
-       Dynamic    a         arg2=b    arg3=c    # [a, b, c]
-       Dynamic    arg3=c    arg1=a    arg2=b    # [a, b, c]
+   Named only
+       Dynamic    a=x                  # [x]           # [], {a: x}
+       Dynamic    c=z    a=x    b=y    # [x, y, z]     # [], {a: x, b: y, c: z}
 
-   Fill skipped
-       Dynamic    a         arg3=c              # [a, xxx, c]
+   Positional and named
+       Dynamic    x      b=y           # [x, y]        # [x], {b: y}
+       Dynamic    x      y      c=z    # [x, y, z]     # [x, y], {c: z}
+       Dynamic    x      b=y    c=z    # [x, y, z]     # [x], {y: b, c: z}
+
+   Intermediate missing
+       Dynamic    x      c=z           # [x, d1, z]    # [x], {c: z}
+
+.. note:: Prior to Robot Framework 3.1, all normal named arguments were
+          mapped to positional arguments and the optional `kwargs` was
+          only used with free named arguments. With the above examples
+          `run_keyword` was always called like it is nowadays called if
+          it does not support `kwargs`.
 
 __ `Getting keyword arguments`_
 
@@ -2384,40 +2459,43 @@ Free named arguments with dynamic libraries
 Dynamic libraries can also support
 `free named arguments`_ (`**named`). A mandatory precondition for
 this support is that the `run_keyword` method `takes three arguments`__:
-the third one will get the free named arguments when they are used. These
-arguments are passed to the keyword as a dictionary (Python) or Map (Java).
+the third one will get the free named arguments along with possible other
+named arguments. These arguments are passed to the keyword as a mapping.
 
 What arguments a keyword accepts depends on what `get_keyword_arguments`
 `returns for it`__. If the last argument starts with `**`, that keyword is
-recognized to accept kwargs.
+recognized to accept free named arguments.
 
 Using the free named argument syntax with dynamic libraries is illustrated
 by the following examples. All the examples use a keyword :name:`Dynamic`
-that has been specified to have argument specification
-`[arg1=xxx, arg2=yyy, **named]`. The comment shows the arguments that
-the `run_keyword` method is actually called with.
+that has an argument specification `[a=d1, b=d2, **named]`. The comment shows
+the arguments that the `run_keyword` method is actually called with.
 
 .. sourcecode:: robotframework
 
-   *** Test Cases ***
+   *** Test Cases ***                  # args, kwargs
    No arguments
-       Dynamic                            # [], {}
+       Dynamic                         # [], {}
 
    Positional only
-       Dynamic    a                       # [a], {}
-       Dynamic    a         b             # [a, b], {}
+       Dynamic    x                    # [x], {}
+       Dynamic    x      y             # [x, y], {}
 
    Free named only
-       Dynamic    a=1                     # [], {a: 1}
-       Dynamic    a=1       b=2    c=3    # [], {a: 1, b: 2, c: 3}
+       Dynamic    x=1                  # [], {x: 1}
+       Dynamic    x=1    y=2    z=3    # [], {x: 1, y: 2, z: 3}
 
-   Positional and free named
-       Dynamic    a         b=2           # [a], {b: 2}
-       Dynamic    a         b=2    c=3    # [a], {b: 2, c: 3}
+   Free named with positional
+       Dynamic    x      y=2           # [x], {y: 2}
+       Dynamic    x      y=2    z=3    # [x], {y: 2, z: 3}
 
-   Named and free named
-       Dynamic    arg1=a    b=2           # [a], {b: 2}
-       Dynamic    arg2=a    b=2    c=3    # [xxx, a], {b: 2, c: 3}
+   Free named with normal named
+       Dynamic    a=1    x=1           # [], {a: 1, x: 1}
+       Dynamic    b=2    x=1    a=1    # [], {a: 1, b: 2, x: 1}
+
+.. note:: Prior to Robot Framework 3.1, normal named arguments were mapped
+          to positional arguments but nowadays they are part of the
+          `kwargs` along with the free named arguments.
 
 __ `Running dynamic keywords`_
 __ `Getting keyword arguments`_
@@ -2427,8 +2505,8 @@ Named-only arguments with dynamic libraries
 
 Starting from Robot Framework 3.1, dynamic libraries can have `named-only
 arguments`_. This requires that the `run_keyword` method `takes three
-arguments`__: the third getting the named-only arguments along with possible
-`free named arguments`__.
+arguments`__: the third getting the named-only arguments along with the other
+named arguments.
 
 In the `argument specification`__ returned by the `get_keyword_arguments`
 method named-only arguments are specified after possible variable number
@@ -2444,21 +2522,23 @@ shows the arguments that the `run_keyword` method is actually called with.
 
 .. sourcecode:: robotframework
 
-   *** Test Cases ***
+   *** Test Cases ***                                  # args, kwargs
    Named-only only
-       Dynamic    named=value                            # [], {named: value}
-       Dynamic    named=value    named2=2                # [], {named: value, named2: 2}
+       Dynamic    named=value                          # [], {named: value}
+       Dynamic    named=value    named2=2              # [], {named: value, named2: 2}
 
-   With positional and varargs
-       Dynamic    argument       named=xxx               # [argument], {named: xxx}
-       Dynamic    a1             a2           named=3    # [a1, a2], {named: 3}
+   Named-only with positional and varargs
+       Dynamic    argument       named=xxx             # [argument], {named: xxx}
+       Dynamic    a1             a2         named=3    # [a1, a2], {named: 3}
 
-   With free named
-       Dynamic    a=1            named=xxx    b=2        # [], {named: xxx, a: 1, b: 2}
-       Dynamic    named2=2       named=1      third=3    # [], {named: 1, named2: 2, third: 3}
+   Named-only with normal named
+       Dynamic    named=foo      positional=bar        # [], {positional: bar, named: foo}
+
+   Named-only with free named
+       Dynamic    named=value    foo=bar               # [], {named: value, foo=bar}
+       Dynamic    named2=2       third=3    named=1    # [], {named: 1, named2: 2, third: 3}
 
 __ `Running dynamic keywords`_
-__ `Free named arguments with dynamic libraries`_
 __ `Getting keyword arguments`_
 
 Summary
@@ -2476,22 +2556,24 @@ camelCase aliases work exactly the same way.
    ===========================  =========================  =======================================================
    `get_keyword_names`                                     `Return names`__ of the implemented keywords.
    `run_keyword`                `name, arguments, kwargs`  `Execute the specified keyword`__ with given arguments. `kwargs` is optional.
-   `get_keyword_arguments`      `name`                     Return keywords' `argument specifications`__. Optional method.
+   `get_keyword_arguments`      `name`                     Return keywords' `argument specification`__. Optional method.
+   `get_keyword_types`          `name`                     Return keywords' `argument type information`__. Optional method. New in RF 3.1.
+   `get_keyword_tags`           `name`                     Return keywords' `tags`__. Optional method. New in RF 3.0.2.
    `get_keyword_documentation`  `name`                     Return keywords' and library's `documentation`__. Optional method.
    ===========================  =========================  =======================================================
 
 __ `Getting dynamic keyword names`_
 __ `Running dynamic keywords`_
 __ `Getting keyword arguments`_
+__ `Getting keyword argument types`_
+__ `Getting keyword tags`_
 __ `Getting keyword documentation`_
 
 It is possible to write a formal interface specification in Java as
 below. However, remember that libraries *do not need* to implement
 any explicit interface, because Robot Framework directly checks with
 reflection if the library has the required `get_keyword_names` and
-`run_keyword` methods or their camelCase aliases. Additionally,
-`get_keyword_arguments` and `get_keyword_documentation`
-are completely optional.
+`run_keyword` methods or their camelCase aliases.
 
 .. sourcecode:: java
 
@@ -2504,6 +2586,10 @@ are completely optional.
        Object runKeyword(String name, List arguments, Map kwargs);
 
        List<String> getKeywordArguments(String name);
+
+       List<String> getKeywordTypes(String name);
+
+       List<String> getKeywordTags(String name);
 
        String getKeywordDocumentation(String name);
 

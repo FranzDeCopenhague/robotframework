@@ -13,12 +13,14 @@ are listed.
 Command line options for test execution
 ---------------------------------------
 
+  --rpa                   Turn on `generic automation`_ mode.
   -F, --extension <value>  `Parse only these files`_ when executing a directory.
   -N, --name <name>       `Sets the name`_ of the top-level test suite.
   -D, --doc <document>    `Sets the documentation`_ of the top-level test suite.
   -M, --metadata <name:value>  `Sets free metadata`_ for the top level test suite.
   -G, --settag <tag>      `Sets the tag(s)`_ to all executed test cases.
   -t, --test <name>       `Selects the test cases by name`_.
+  --task <name>           Alias for :option:`--test` that can be used when `executing tasks`_.
   -s, --suite <name>      `Selects the test suites`_ by name.
   -R, --rerunfailed <file>  `Selects failed tests`_ from an earlier `output file`_
                           to be re-executed.
@@ -43,6 +45,7 @@ Command line options for test execution
   --logtitle <title>      `Sets a title`_ for the generated test log.
   --reporttitle <title>   `Sets a title`_ for the generated test report.
   --reportbackground <colors>  `Sets background colors`_ of the generated report.
+  --maxerrorlines <lines>  Sets the number of `error lines`_ shown in reports when tests fail.
   -L, --loglevel <level>  `Sets the threshold level`_ for logging. Optionally
                           the default `visible log level`_ can be given
                           separated with a colon (:).
@@ -89,12 +92,14 @@ Command line options for test execution
 Command line options for post-processing outputs
 ------------------------------------------------
 
+  --rpa                   Turn on `generic automation`_ mode.
   -R, --merge             Changes result combining behavior to `merging <merging outputs_>`__.
   -N, --name <name>       `Sets the name`_ of the top level test suite.
   -D, --doc <document>    `Sets the documentation`_ of the top-level test suite.
   -M, --metadata <name:value>  `Sets free metadata`_ for the top-level test suite.
   -G, --settag <tag>      `Sets the tag(s)`_ to all processed test cases.
   -t, --test <name>       `Selects the test cases by name`_.
+  --task <name>           Alias for :option:`--test`.
   -s, --suite <name>      `Selects the test suites`_ by name.
   -i, --include <tag>     `Selects the test cases`_ by tag.
   -e, --exclude <tag>     `Selects the test cases`_ by tag.
@@ -142,6 +147,7 @@ Command line options for post-processing outputs
   --version               Prints the `version information`_.
 
 
+.. _generic automation: `Task execution`_
 .. _Parse only these files: `Selecting files to parse`_
 .. _Sets the name: `Setting the name`_
 .. _Sets the documentation: `Setting the documentation`_
@@ -166,6 +172,7 @@ Command line options for post-processing outputs
 .. _Split log file: `Splitting logs`_
 .. _Sets a title: `Setting titles`_
 .. _Sets background colors: `Setting background colors`_
+.. _error lines: `Limiting error message length in reports`_
 
 .. _Sets the threshold level: `Setting log level`_
 .. _levels to show: `Configuring displayed suite statistics`_
